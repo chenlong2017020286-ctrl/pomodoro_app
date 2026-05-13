@@ -488,8 +488,8 @@ class _PomodoroHomePageState extends State<PomodoroHomePage>
 
   // ---- 圆形计时器 ----
   Widget _buildTimerCircle(double progress, Color modeColor) {
-    return AnimatedBuilder(
-      animation: _pulseAnimation,
+    return ListenableBuilder(
+      listenable: _pulseAnimation,
       builder: (context, child) {
         final scale = _isRunning ? _pulseAnimation.value : 1.0;
         return Transform.scale(
