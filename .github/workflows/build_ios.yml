@@ -2,7 +2,7 @@ name: Build iOS IPA
 
 on:
   push:
-    branches: [main]
+    branches: [main, master]
   workflow_dispatch:
 
 jobs:
@@ -17,6 +17,20 @@ jobs:
         with:
           flutter-version: '3.24.0'
           channel: 'stable'
+
+      - name: Recreate iOS project files
+        run: |
+          # Backup existing files
+          cp lib/main.dart /tmp/main.dart
+          cp pubspec.yaml /tmp/pubspec.yaml
+          # Recreate project with proper iOS structure
+          cd ..
+          rm -rf pomodoro_app
+          flutter create --org com.pomodoro --project-name pomodoro_app pomodoro_app
+          cd pomodoro_app
+          # Restore our code
+          cp /tmp/main.dart lib/main.dart
+          cp /tmp/pubspec.yaml pubspec.yaml
 
       - name: Get dependencies
         run: flutter pub get
