@@ -6,6 +6,7 @@
 .DS_Store
 
 # Flutter specific
+.dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies
 .packages
@@ -33,8 +34,8 @@ DerivedData
 **/.xcode.env.local
 
 # Android/IntelliJ
-.idea
-.gradle
+.idea/
+.gradle/
 local.properties
 *.iml
 *.ipr

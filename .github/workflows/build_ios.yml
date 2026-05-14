@@ -9,8 +9,8 @@ on:
 
 jobs:
   build:
-    runs-on: macos-14
-    timeout-minutes: 60
+    runs-on: macos-15
+    timeout-minutes: 90
 
     steps:
       - name: Checkout code
@@ -21,34 +21,73 @@ jobs:
         with:
           channel: 'stable'
           cache: true
+          cache-key: flutter-{{ arch }}-{{ checksum 'pubspec.lock' }}
+          cache-path: ~/.pub-cache
 
       - name: Install dependencies
         run: flutter pub get
 
       - name: Install iOS simulator destination
         run: |
-          xcrun simctl list devices available | head -20
+          xcrun simctl list devices available | head -30
+
+      - name: List available simulators
+        run: |
+          xcrun simctl list devices available
+
+      - name: Check Xcode version
+        run: |
+          xcodebuild -version
+          flutter doctor
 
       - name: Build iOS (Release - No Code Sign)
         run: |
-          flutter build ios --release --no-codesign
+          flutter build ios --release --no-codesign -v 2>&1 | tee build.log
         env:
           FLUTTER_SUPPRESS_ANALYTICS: true
 
+      - name: Debug Build Log
+        if: failure()
+        run: |
+          echo "=== Build Log (last 100 lines) ==="
+          tail -100 build.log || true
+          echo "=== Checking build output ==="
+          ls -la build/ios/ 2>/dev/null || echo "build/ios/ not found"
+          ls -la build/ios/iphoneos/ 2>/dev/null || echo "build/ios/iphoneos/ not found"
+
       - name: Create IPA package
         run: |
-          cd build/ios/iphoneos
-          mkdir -p Payload
-          cp -R *.app Payload/
-          zip -r memo_app.ipa Payload
-          ls -la *.ipa
+          if [ -d "build/ios/iphoneos" ]; then
+            cd build/ios/iphoneos
+            mkdir -p Payload
+            cp -R *.app Payload/ 2>/dev/null || echo "No .app found"
+            if [ -d "Payload" ] && [ "$(ls -A Payload)" ]; then
+              zip -r memo_app.ipa Payload
+              ls -la *.ipa || echo "IPA not created"
+            else
+              echo "Payload directory empty or not found"
+              find build/ios -name "*.app" -type d 2>/dev/null || echo "No .app found"
+            fi
+          else
+            echo "build/ios/iphoneos directory not found"
+            find build -name "*.app" -type d 2>/dev/null || echo "No .app found in build"
+          fi
 
       - name: Upload IPA artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: memo-app-ipa
           path: build/ios/iphoneos/memo_app.ipa
           retention-days: 30
+
+      - name: Upload Build Log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build.log
+          retention-days: 7
 
       - name: Create Release
         if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
@@ -62,6 +101,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Display build info
+        if: success()
         run: |
           echo "Build completed successfully!"
           echo "IPA location: build/ios/iphoneos/memo_app.ipa"
