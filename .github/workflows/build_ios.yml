@@ -80,7 +80,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: memo-app-ipa
+          name: memo-app-ipa-${{ github.run_number }}
           path: build/ios/iphoneos/memo_app.ipa
           retention-days: 30
 
@@ -88,23 +88,17 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: build-log
+          name: build-log-${{ github.run_number }}
           path: build.log
           retention-days: 7
-
-      - name: Create Release
-        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: build/ios/iphoneos/memo_app.ipa
-          tag_name: v${{ github.run_number }}
-          name: Memo App v${{ github.run_number }}
-          body: "自动构建的备忘录应用 IPA 文件"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Display build info
         if: success()
         run: |
-          echo "Build completed successfully!"
+          echo "=========================================="
+          echo "🎉 Build completed successfully!"
+          echo "=========================================="
           echo "IPA location: build/ios/iphoneos/memo_app.ipa"
+          echo ""
+          echo "Download the IPA from GitHub Actions artifacts:"
+          echo "https://github.com/${{ github.repository }}/actions"
