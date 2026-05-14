@@ -1,0 +1,67 @@
+name: Build iOS IPA
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-14
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Install iOS simulator destination
+        run: |
+          xcrun simctl list devices available | head -20
+
+      - name: Build iOS (Release - No Code Sign)
+        run: |
+          flutter build ios --release --no-codesign
+        env:
+          FLUTTER_SUPPRESS_ANALYTICS: true
+
+      - name: Create IPA package
+        run: |
+          cd build/ios/iphoneos
+          mkdir -p Payload
+          cp -R *.app Payload/
+          zip -r memo_app.ipa Payload
+          ls -la *.ipa
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: memo-app-ipa
+          path: build/ios/iphoneos/memo_app.ipa
+          retention-days: 30
+
+      - name: Create Release
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/ios/iphoneos/memo_app.ipa
+          tag_name: v${{ github.run_number }}
+          name: Memo App v${{ github.run_number }}
+          body: "自动构建的备忘录应用 IPA 文件"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Display build info
+        run: |
+          echo "Build completed successfully!"
+          echo "IPA location: build/ios/iphoneos/memo_app.ipa"
