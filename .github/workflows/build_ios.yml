@@ -16,33 +16,36 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Clean Flutter cache
+        run: |
+          rm -rf ~/.pub-cache
+          rm -rf .dart_tool
+
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
-          cache: true
-          cache-key: flutter-{{ arch }}-{{ checksum 'pubspec.lock' }}
-          cache-path: ~/.pub-cache
+          cache: false
 
       - name: Install dependencies
-        run: flutter pub get
-
-      - name: Install iOS simulator destination
         run: |
-          xcrun simctl list devices available | head -30
+          flutter pub get --no-precompile
+
+      - name: Check Flutter environment
+        run: |
+          flutter doctor -v
 
       - name: List available simulators
         run: |
-          xcrun simctl list devices available
+          xcrun simctl list devices available | head -30
 
       - name: Check Xcode version
         run: |
           xcodebuild -version
-          flutter doctor
 
       - name: Build iOS (Release - No Code Sign)
         run: |
-          flutter build ios --release --no-codesign -v 2>&1 | tee build.log
+          flutter build ios --release --no-codesign 2>&1 | tee build.log
         env:
           FLUTTER_SUPPRESS_ANALYTICS: true
 
